@@ -1,0 +1,1 @@
+G_SHEET_URL="https://docs.google.com/spreadsheets/d/17qKNJUXGdhjV04a1rp4GrvJEjRwO1FyD2Z3slv-swNw/edit?gid=0#gid=0"
