@@ -1,80 +1,145 @@
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { useEffect, useState } from "react"
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
-} from "recharts"
+"use client";
 
-export default function Home() {
-  const [appliedJobs, setAppliedJobs] = useState([])
-  const [stats, setStats] = useState([])
+import { useEffect, useState } from "react";
+import axios from "axios";
+
+interface Job {
+  job_id: string;
+  title: string;
+  company: string;
+  url: string;
+  status?: string;
+  date?: string;
+}
+
+export default function Dashboard() {
+  const API = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
+
+
+  const [newJobs, setNewJobs] = useState<Job[]>([]);
+  const [appliedJobs, setAppliedJobs] = useState<Job[]>([]);
+  const [running, setRunning] = useState(false);
+
+  // ----------------------------
+  // FETCHERS
+  // ----------------------------
+
+  const fetchNewJobs = async () => {
+    const res = await axios.get(`${API}/new-jobs`);
+    setNewJobs(res.data);
+  };
+
+  const fetchAppliedJobs = async () => {
+    const res = await axios.get(`${API}/applied`);
+    setAppliedJobs(res.data);
+  };
+
+  // ----------------------------
+  // RUN BOT (8.1 IMPLEMENTED)
+  // ----------------------------
+
+  const runBot = async () => {
+    try {
+      setRunning(true);
+
+      // 1️⃣ Run backend bot
+      await axios.post(`${API}/run-bot`);
+
+      // 2️⃣ Refresh applied jobs immediately
+      await fetchAppliedJobs();
+
+      alert("Bot finished. Applied jobs updated.");
+    } catch (err) {
+      console.error(err);
+      alert("Bot failed");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  // ----------------------------
+  // INITIAL LOAD
+  // ----------------------------
 
   useEffect(() => {
-    fetch("http://localhost:8000/applied")
-      .then(res => res.json())
-      .then(data => setAppliedJobs(data))
+    fetchNewJobs();
+    fetchAppliedJobs();
+  }, []);
 
-    fetch("http://localhost:8000/stats")
-      .then(res => res.json())
-      .then(data => setStats(data))
-  }, [])
+  // ----------------------------
+  // UI
+  // ----------------------------
 
   return (
-    <main className="p-10 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold mb-6">Job Auto Apply Dashboard</h1>
+    <div className="p-8 max-w-6xl mx-auto">
+      <h1 className="text-4xl font-bold mb-6">
+        Job Auto Apply Dashboard
+      </h1>
 
-      <div className="grid grid-cols-3 gap-6">
-
-        {/* Applied Jobs Count */}
-        <Card className="rounded-2xl shadow-lg">
-          <CardContent className="p-6">
-            <h2 className="text-lg mb-2">Total Applications</h2>
-            <p className="text-4xl font-bold">{appliedJobs.length}</p>
-          </CardContent>
-        </Card>
-
-        {/* Bot Status */}
-        <Card className="rounded-2xl shadow-lg">
-          <CardContent className="p-6">
-            <h2 className="text-lg mb-2">Bot Status</h2>
-            <Button className="mr-3"
-              onClick={() => fetch("http://localhost:8000/control/start")}>
-              Start Bot
-            </Button>
-
-            <Button variant="destructive"
-              onClick={() => fetch("http://localhost:8000/control/stop")}>
-              Stop Bot
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Logs Button */}
-        <Card className="rounded-2xl shadow-lg">
-          <CardContent className="p-6">
-            <h2 className="text-lg mb-2">View Logs</h2>
-            <Button onClick={() => window.open("https://docs.google.com/spreadsheets/u/0/", "_blank")}>
-              Open Sheet
-            </Button>
-          </CardContent>
-        </Card>
-
+      {/* ACTION BUTTON */}
+      <div className="mb-8">
+        <button
+          onClick={runBot}
+          disabled={running}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+        >
+          {running ? "Running..." : "Run Job Bot"}
+        </button>
       </div>
 
-      {/* Chart */}
-      <div className="mt-10 p-6 bg-white rounded-xl shadow-md">
-        <h2 className="text-xl mb-4 font-semibold">Applications Per Day</h2>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={stats}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="day" />
-            <YAxis />
-            <Tooltip />
-            <Line type="monotone" dataKey="count" stroke="#8884d8" />
-          </LineChart>
-        </ResponsiveContainer>
+      {/* NEW JOBS */}
+      <h2 className="text-2xl font-semibold mb-4">
+        New Jobs
+      </h2>
+
+      <div className="mb-10">
+        {newJobs.length === 0 && <p>No new jobs found.</p>}
+
+        {newJobs.map((job) => (
+          <div
+            key={job.job_id}
+            className="border p-4 rounded-lg mb-3 bg-gray-900"
+          >
+            <h3 className="text-xl font-bold">{job.title}</h3>
+            <p className="text-gray-300">{job.company}</p>
+            <a
+              href={job.url}
+              target="_blank"
+              className="text-blue-400 underline"
+            >
+              View Job
+            </a>
+          </div>
+        ))}
       </div>
 
-    </main>
-  )
+      {/* APPLIED JOBS */}
+      <h2 className="text-2xl font-semibold mb-4">
+        Applied Jobs
+      </h2>
+
+      <div>
+        {appliedJobs.length === 0 && <p>No applied jobs yet.</p>}
+
+        {appliedJobs.map((job) => (
+          <div
+            key={job.job_id}
+            className="border p-4 rounded-lg mb-3 bg-gray-800"
+          >
+            <h3 className="text-xl font-bold">{job.title}</h3>
+            <p className="text-gray-300">{job.company}</p>
+            <p>Status: {job.status}</p>
+            <p>Date: {job.date}</p>
+            <a
+              href={job.url}
+              target="_blank"
+              className="text-blue-400 underline"
+            >
+              View Job
+            </a>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
