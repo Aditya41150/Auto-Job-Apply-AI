@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+
+# Environment
+.env
+.env.*
+
+# Credentials
+config/gs_creds.json
+
+# VSCode
+.vscode/
